@@ -6,7 +6,7 @@ class StudyBotTest {
 
     @org.junit.Test
     fun parse() {
-        val studyBot = StudyBot("files/westra.lua")
-        studyBot.parse()
+        val studyBot = StudyBot()
+        studyBot.parse("files/westra.lua")
     }
 }

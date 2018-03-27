@@ -5,33 +5,46 @@ import java.io.*
 import java.util.*
 
 @Suppress("MayBeConstant")
-class StudyBot(private val fileName: String?) {
+class StudyBot {
 
     companion object {
         private val OUTPUT_FILE_NAME = "output.html"
         private val TEXT = "text"
         private val HIGHLIGHT = "highlight"
+        private val LUA_HEADER_TO_SKIP = "-- we can read Lua syntax here!"
+        private val LUA_OBJECT_START_TO_REPLACE = "return {"
+        private val LUA_OBJECT_START = "{"
+        private val HTML_META_HEADER = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
+        private val STATS = "stats"
+        private val AUTHORS = "authors"
+        private val TITLE = "title"
     }
 
-    fun parse() {
+    // TODO: Pass in output location!! Html settings etc..
+    fun parse(fileName: String?) {
+        val hashMap = readFile(fileName)
+        writeOutToFile(hashMap)
+        println("Success!")
+    }
 
-        // Input
+    private fun readFile(fileName: String?): HashMap<*, *> {
         val file = File(fileName)
         val bufferedReader = file.bufferedReader()
         val text: List<String> = bufferedReader.readLines()
         val builder = StringBuilder()
         for (line in text) {
             var inputLine = line
-            if (inputLine != "-- we can read Lua syntax here!") { // don't include this
-                if (line.contains("return {")) {
-                    inputLine = inputLine.replace("return {", "{")
+            if (inputLine != LUA_HEADER_TO_SKIP) { // don't include this
+                if (line.contains(LUA_OBJECT_START_TO_REPLACE)) {
+                    inputLine = inputLine.replace(LUA_OBJECT_START_TO_REPLACE, LUA_OBJECT_START)
                 }
                 builder.append(inputLine)
             }
         }
-        val hashMap = LuaParser(StringReader(builder.toString())).parse() as HashMap<*, *>
+        return LuaParser(StringReader(builder.toString())).parse() as HashMap<*, *>
+    }
 
-        // Output
+    private fun writeOutToFile(hashMap: HashMap<*, *>) {
         val outPutFileName =
                 System.getProperty("user.home") +
                         File.separator +
@@ -42,26 +55,24 @@ class StudyBot(private val fileName: String?) {
         val fileWriter = FileWriter(outPutFileName)
         val bufferedWriter = BufferedWriter(fileWriter)
 
-        bufferedWriter.write(" <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />")
+        bufferedWriter.write(HTML_META_HEADER)
         writeOutStats(hashMap, bufferedWriter)
         writeOutHighlights(hashMap, bufferedWriter)
         bufferedWriter.newLine()
         bufferedWriter.close()
-
-        println("Success!")
     }
 
     @Throws(IOException::class)
     private fun writeOutStats(input: HashMap<*, *>, bufferedWriter: BufferedWriter?) {
-        if (input.containsKey("stats")) {
-            val stats = input["stats"] as HashMap<*, *>
+        if (input.containsKey(STATS)) {
+            val stats = input[STATS] as HashMap<*, *>
             for ((key, value) in stats) {
                 var authors: String?
-                if (key == "authors") {
+                if (key == AUTHORS) {
                     authors = value as String
                     bufferedWriter!!.write("<h3>$authors</h3>")
                 }
-                if (key == "title") {
+                if (key == TITLE) {
                     val title = value as String
                     bufferedWriter!!.write("<h1>$title</h1>")
                 }
@@ -100,6 +111,7 @@ class StudyBot(private val fileName: String?) {
                         val subHighlights1 = sortedSubHighlights[subKey] as HashMap<String, String>
                         for ((key) in subHighlights1) {
                             if (key == TEXT) {
+                                // TODO: Out put through same helper method
                                 bufferedWriter.write("<span> Page: $pageKey</span></br>")
                                 bufferedWriter.write("<span>" + subHighlights1[key] + "</span></br></br>")
                             }
